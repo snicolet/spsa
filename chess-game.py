@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Usage: spsa3-chess-game.py SEED [PARAM_NAME PARAM_VALUE]...
+Usage: chess-game.py SEED [PARAM_NAME PARAM_VALUE]...
 
 Play one game of chess with SPSA3_PARAM(s), using cutechess-cli :
 
@@ -26,14 +26,14 @@ this script can alternate the engine's playing side correctly. The interface of
 this script is meant to be very similar to the interface used by the tool CLOP
 by Remi Coulomb.
 
-In this script the following variables  must be modified to fit the test
+In this script the following variables must be modified to fit the test
 environment and conditions. The default values are just examples.
    'directory'
    'cutechess_cli_path'
    'engine'
-   'engine_param_cmd',
+   'engine_param_cmd'
    'opponents'
-   'options'.
+   'options'
 
 When the game is completed the script writes the game outcome to its
 standard output:

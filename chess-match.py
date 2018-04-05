@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Usage: spsa3-chess-match.py LENGTH SEED [PARAM_NAME PARAM_VALUE]...
+Usage: chess-match.py LENGTH SEED [PARAM_NAME PARAM_VALUE]...
 
 Organize a small chess match with SPSA3_PARAM(s), using cutechess-cli:
 
@@ -26,9 +26,9 @@ environment and conditions. The default values are just examples.
    'directory'
    'cutechess_cli_path'
    'engine'
-   'engine_param_cmd',
+   'engine_param_cmd'
    'opponents'
-   'options'.
+   'options'
 
 When the match is completed the script writes the average score of the match
 outcome to its standard output:
