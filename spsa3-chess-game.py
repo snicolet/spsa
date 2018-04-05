@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 
 """
-Usage: spsa3-cutechess-cli.py CPU_ID SEED [PARAM_NAME PARAM_VALUE]...
+Usage: spsa3-chess-game.py SEED [PARAM_NAME PARAM_VALUE]...
 
-Run cutechess-cli with SPSA3_PARAM(s) :
+Play one game of chess with SPSA3_PARAM(s), using cutechess-cli :
 
-  CPU_ID        Symbolic name of the CPU or machine that should run the game
   SEED          Running number for the game to be played
   PARAM_NAME    Name of a parameter that's being optimized
   PARAM_VALUE   Integer value for parameter PARAM_NAME
@@ -16,14 +15,14 @@ It is an implementation of the SPSA3 algorithm, with a focus on optimizing
 parameters for game playing engines like Go, Chess, etc.
 
 This script works between SPSA3 and cutechess-cli, a chess utility to organize
-matches betwee chess engines. This Python script plays one game between two
-chess engines, one of them receiving the list of arguments values given on the 
-command line, and the other one being chosen by the script among a fixed pool
-of oppenent(s) specified in the script.
+matches between chess engines. This Python script plays ONE GAME between two
+chess engines. One of the engines receives the list of arguments values given 
+on the command line, and the other one being chosen by the script among a fixed
+pool of oppenent(s) specified in the script.
 
 The path to this script, without any parameters, should be on the "Script" line
 of the .spsa3 file. 'Replications' in the .spsa3 file should be set to 2 so that
-this script can alternate the engine's playing side correctly. The intreface of
+this script can alternate the engine's playing side correctly. The interface of
 this script is meant to be very similar to the interface used by the tool CLOP
 by Remi Coulomb.
 
@@ -55,30 +54,29 @@ directory = '/Users/stephane/Programmation/fishtest-for-local-tests/worker/testi
 # On Windows this should point to cutechess-cli.exe
 cutechess_cli_path = directory + 'cutechess-cli'
 
-
 # The engine whose parameters will be optimized
-engine  = 'cmd=' + directory + 'stockfish '
-engine += 'proto=uci '
-engine += 'option.Threads=1 '
-engine += 'name=stockfish '
+engine  = ' cmd=' + directory + 'stockfish '
+engine += ' proto=uci '
+engine += ' option.Threads=1 '
+engine += ' name=stockfish '
 
 # Format for the commands that are sent to the engine to
 # set the parameter values. When the command is sent,
 # {name} will be replaced with the parameter name and {value}
 # with the parameter value.
-engine_param_cmd = 'setoption name {name} value {value}'
+engine_param_cmd = ' setoption name {name} value {value} '
 
 # A pool of opponents for the engine. The opponent will be chosen
 # based on the seed sent by SPSA3. In Stockfish development we
 # usually use only one opponent in the pool (the old master branch).
-opponents = [ 'cmd=' + directory + 'base proto=uci option.Threads=1 name=base' ]
+opponents = [ ' cmd=' + directory + 'base proto=uci option.Threads=1 name=base ' ]
 
 # Additional cutechess-cli options, eg. time control and opening book.
 # They will be used by both players.
-options  = '-resign movecount=3 score=600 '
-options += '-draw movenumber=34 movecount=8 score=20 '
-options += '-each tc=10.0+0.05 '
-options += '-openings file=2moves_v1.pgn format=pgn order=random plies=4 '
+options  = ' -resign movecount=3 score=400 '
+options += ' -draw movenumber=34 movecount=8 score=20 '
+options += ' -each tc=10.0+0.05 '
+options += ' -openings file=2moves_v1.pgn format=pgn order=random plies=4 '
 
 
 def main(argv = None):
@@ -89,7 +87,6 @@ def main(argv = None):
         print(__doc__)
         return 0
 
-    argv = argv[1:]
     if len(argv) < 3 or len(argv) % 2 == 0:
         print('Too few arguments')
         return 2
@@ -115,15 +112,15 @@ def main(argv = None):
         # Pass SPSA3's parameters to the engine by using
         # cutechess-cli's initialization string feature
         initstr = engine_param_cmd.format(name = argv[i], value = argv[i + 1])
-        fcp += ' initstr="%s"' % initstr
+        fcp += ' initstr="%s" ' % initstr
 
     # Choose the engine's playing side (color) based on SPSA's seed
     if spsa3_seed % 2 != 0:
         fcp, scp = scp, fcp
 
-    cutechess_args = '-srand %d -engine %s -engine %s %s' % (spsa3_seed >> 1, fcp, scp, options)
-    command  = 'cd ' + directory + ' ; '
-    command += '%s %s' % (cutechess_cli_path, cutechess_args)
+    cutechess_args = ' -srand %d -engine %s -engine %s %s ' % (spsa3_seed >> 1, fcp, scp, options)
+    command  = ' cd ' + directory + ' && '
+    command += ' %s %s ' % (cutechess_cli_path, cutechess_args)
     
     # Debug the command
     # print(command)
@@ -152,11 +149,11 @@ def main(argv = None):
             break
 
     if result == 0:
-        print('1')
+        print('1')      # Win
     elif result == 1:
-        print('0')
+        print('0')      # Loss
     elif result == 2:
-        print('0.5')
+        print('0.5')    # Draw
 
 if __name__ == "__main__":
     sys.exit(main())
