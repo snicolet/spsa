@@ -31,10 +31,10 @@ environment and conditions. The default values are just examples.
    'options'
 
 When the match is completed the script writes the average score of the match
-outcome to its standard output:
-  0   = loss
-  0.5 = draw
-  1   = win
+outcome to its standard output, which is a real number between 0.0 (the engine
+lost all the games of the match, and 1.0 (the engine won all the games of the
+match). For example in a match of six games, 2 wins, 1 draw and 3 losses gives
+a match result of (2 + 0.5 + 0) / 6 = 0.417
 """
 
 from subprocess import Popen, PIPE
