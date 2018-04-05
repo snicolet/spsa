@@ -73,11 +73,12 @@ engine_param_cmd = 'setoption name {name} value {value}'
 # usually use only one opponent in the pool (the old master branch).
 opponents = [ 'cmd=' + directory + 'base proto=uci option.Threads=1 name=base' ]
 
-# Additional cutechess-cli options, eg. time control and opening book
+# Additional cutechess-cli options, eg. time control and opening book.
+# They will be used by both players.
 options  = '-resign movecount=3 score=600 '
 options += '-draw movenumber=34 movecount=8 score=20 '
 options += '-each tc=10.0+0.05 '
-options += '-openings file=8moves_v3.pgn format=pgn order=random plies=16 '
+options += '-openings file=2moves_v1.pgn format=pgn order=random plies=4 '
 
 
 def main(argv = None):
