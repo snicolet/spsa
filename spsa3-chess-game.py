@@ -38,9 +38,9 @@ environment and conditions. The default values are just examples.
 
 When the game is completed the script writes the game outcome to its
 standard output:
-  W = win
-  L = loss
-  D = draw
+  0   = loss
+  0.5 = draw
+  1   = win
 """
 
 from subprocess import Popen, PIPE
@@ -151,11 +151,11 @@ def main(argv = None):
             break
 
     if result == 0:
-        print('W')
+        print('1')
     elif result == 1:
-        print('L')
+        print('0')
     elif result == 2:
-        print('D')
+        print('0.5')
 
 if __name__ == "__main__":
     sys.exit(main())
