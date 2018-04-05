@@ -26,7 +26,7 @@ class SPSA_minimization:
         Args:
             f (function) :
                 The function to minimize.
-            theta0 (dict):
+            theta0 (dict) :
                 The starting point of the minimization.
             max_iter (int) :
                 The number of iterations of the algorithm.
