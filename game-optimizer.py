@@ -48,7 +48,7 @@ def read_parameters(s):
    
    theta0 = {}
    
-   for k in range(0 , n / 2):
+   for k in range(0 , n // 2):
       name  = list[ 2*k ]
       value = float(list[ 2*k + 1])
       theta0[name] = value
