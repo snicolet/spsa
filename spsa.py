@@ -86,16 +86,22 @@ class SPSA_minimization:
 
             #print(k, " gradient =", gradient)
             # if k % 1000 == 0:
-                # print(k, theta, "norm(g) =", norm(gradient))
+                # print(k, theta, "norm2(g) =", norm2(gradient))
                 # print(k, " theta =", theta)
 
-            theta = linear_combinaison(1.0, theta, -a_k, gradient)
+            ## For SPSA we update with a small step:   theta = theta - a_k * gradient
+            ##
+            ## theta = linear_combinaison(1.0, theta, -a_k, gradient)
+            
+            ## For SAG we update with a larger step:    theta = theta - 16 * a_k * gradient
+            ##
+            theta = linear_combinaison(1.0, theta, -16.0 * a_k, gradient)
 
             k = k + 1
             if k >= self.max_iter:
                 break
 
-            if (k % 100 == 0) or (k < 10) :
+            if (k % 100 == 0) or (k <= 1000) :
                 print("iter =", k, " goal =", self.average_evaluations(30))
 
         return theta
@@ -176,8 +182,8 @@ class SPSA_minimization:
             delta[name] = 1 if random.randint(0, 1) else -1
 
 
-        g = norm(self.previous_gradient)
-        d = norm(delta)
+        g = norm2(self.previous_gradient)
+        d = norm2(delta)
 
         if g > 0.00001:
             delta = linear_combinaison(0.55        , delta, \
@@ -196,7 +202,7 @@ class SPSA_minimization:
         so the returned value is an upper bound of the true value).
         """
 
-        assert(self.history_count > 0),"not enough evaluations in average_evaluations!"
+        assert(self.history_count > 0) , "not enough evaluations in average_evaluations!"
 
         if n <= 0                 : n = 1
         if n > 1000               : n = 1000
@@ -217,14 +223,23 @@ class SPSA_minimization:
 ### Helper functions
 
 
-def norm(m):
+def norm2(m):
     """
-    Return the norm of the point m
+    Return the L2-norm of the point m
     """
     s = 0.0
     for (name, value) in m.items():
         s += value ** 2
     return math.sqrt(s)
+
+def norm1(m):
+    """
+    Return the L1-norm of the point m
+    """
+    s = 0.0
+    for (name, value) in m.items():
+        s += abs(value)
+    return s
 
 
 def linear_combinaison(alpha = 1.0, m1 = {},
@@ -241,6 +256,26 @@ def linear_combinaison(alpha = 1.0, m1 = {},
         m[name] = alpha * value + beta * m2.get(name, 0.0)
 
     return m
+
+
+def difference(m1, m2):
+    """
+    Return the difference m = m1 - m2.
+    """
+    return linear_combinaison(1.0, m1, -1.0, m2)
+
+def sum(m1, m2):
+    """
+    Return the sum m = m1 + m2.
+    """
+    return linear_combinaison(1.0, m1, 1.0, m2)
+
+def regulizer(m, lambd , alpha):
+    """
+    Return a regulizer r = lamdb * ((1 - alpha) * norm1(m) + alpha * norm2(m))
+    Useful to transform non-convex problems into pseudo-convex ones
+    """
+    return lambd * ((1 - alpha) * norm1(m) + alpha * norm2(m))
 
 
 ###### Examples

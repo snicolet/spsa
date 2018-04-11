@@ -125,7 +125,7 @@ def main(argv = None):
     command += ' %s %s ' % (cutechess_cli_path, cutechess_args)
     
     # Debug the command
-    print(command)
+    # print(command)
 
     # Run cutechess-cli and wait for it to finish
     process = Popen(command, shell = True, stdout = PIPE)
@@ -135,7 +135,7 @@ def main(argv = None):
         return 2
     
     # Debug the cutechess-cli output
-    print(output)
+    # print(output)
 
     # Convert cutechess-cli's output into a match score: 
     # we search for the last line containing a score of the match
