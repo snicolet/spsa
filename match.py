@@ -25,7 +25,6 @@ environment and conditions. The default values are just examples.
    'directory'
    'engine'
    'engine_param_cmd'
-   'options'
 
 When the match is completed the script writes the average score of the match
 outcome to its standard output, which is a real number between 0.0 (the engine
