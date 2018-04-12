@@ -3,7 +3,7 @@
 Optimizer for game coefficients using the SPSA algorithm.
 Author: Stéphane Nicolet
 
-Usage : python game-optimizer.py [PARAM_NAME PARAM_VALUE]...
+Usage : *python game-optimizer.py [PARAM_NAME PARAM_VALUE]...*
 
 The parameter list can also we provided as a string in the Python code,
 see the function set_parameters_from_string() in the example section.
