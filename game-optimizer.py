@@ -15,6 +15,8 @@ def engine_score(theta):
     
     minibatch = 6                             # size of the mini-matches used to get an evaluation
     seed      = random.randint(1, 100000000)  # a random seed
+    
+    print(seed)
 
     command = "python chess-match.py "
     args = " " + str(minibatch) + " " + str(seed) + " "
@@ -75,8 +77,8 @@ def goal_function(**args):
     
     result = -score + regularization
     
-    print("goal_function : **args = " + str(args))
-    print("goal_function : result = " + str(result))
+    print("**args = " + str(args))
+    print("goal   = " + str(result))
     
     return result
 
