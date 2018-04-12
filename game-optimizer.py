@@ -135,26 +135,26 @@ class game_optimizer:
 
 if __name__ == "__main__":
 
-    # create the optimization object
+    # Create the optimization object
     optimizer  = game_optimizer()
     
-    # set the name of the script to run matches
+    # Set the name of the script to run matches
     #optimizer.set_engine_command("python chess-match.py")
     optimizer.set_engine_command("python match.py")
     
-    # use this to get the initial parameters from a string
+    # Use this to get the initial parameters from a string
     parameters = "singular_A   20   singular_B  0"
     
-    # use this to get the initial parameters from the command line
+    # Use this to get the initial parameters from the command line
     # parameters = ' '.join(sys.argv[1:])
     
     print("parameters = " + parameters)
     theta0 = optimizer.set_parameters_from_string(parameters)
     
-    # create the SPSA minimizer with 10000 iterations...
+    # Create the SPSA minimizer with 10000 iterations...
     minimizer  = spsa.SPSA_minimization(optimizer.goal_function, theta0, 10000)
     
-    # run it!
+    # Run it!
     minimum = minimizer.run()
     print("minimum = ", minimum)
     
