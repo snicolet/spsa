@@ -2,6 +2,12 @@
 """
 Optimizer for game coefficients using the SPSA algorithm.
 Author: Stéphane Nicolet
+
+Usage : python game-optimizer.py [PARAM_NAME PARAM_VALUE]...
+
+The parameter list can also we provided as a string in the Python code,
+see the function set_parameters_from_string() in the example section.
+
 """
 
 from subprocess import Popen, PIPE
@@ -11,8 +17,6 @@ import array
 import sys
 import spsa
 import utils
-
-
 
 
 class game_optimizer:
@@ -104,10 +108,9 @@ class game_optimizer:
         into a vector for internal usage by the class.
         
         Example: "QueenValue 10.0  RookValue 6.0 "
-                 would be transformed into the following python vector:
+                       would be transformed into the following python vector:
                  {'QueenValue': 10.0, 'RookValue': 6.0}
-                 and this will be used as the starting point for the optimizer
-                 
+                       this vector will be used as the starting point for the optimizer
         """
         
         # Parse the string
@@ -132,15 +135,12 @@ class game_optimizer:
 
 if __name__ == "__main__":
 
-    """
-       Usage : python game-optimizer.py [PARAM_NAME PARAM_VALUE]...
-    """
-
     # create the optimization object
     optimizer  = game_optimizer()
     
     # set the name of the script to run matches
-    optimizer.set_engine_command("python chess-match.py")
+    #optimizer.set_engine_command("python chess-match.py")
+    optimizer.set_engine_command("python match.py")
     
     # use this to get the initial parameters from a string
     parameters = "singular_A   20   singular_B  0"

@@ -90,12 +90,10 @@ class SPSA_minimization:
                 # print(k, theta, "norm2(g) =", utils.norm2(gradient))
                 # print(k, " theta =", theta)
 
-            ## For SPSA we update with a small step:   theta = theta - a_k * gradient
-            ##
+            ## For SPSA we update with a small step (theta = theta - a_k * gradient)
             ## theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
             
-            ## For SAG we update with a larger step:    theta = theta - 8 * a_k * gradient
-            ##
+            ## For SAG we update with a larger step (theta = theta - 8 * a_k * gradient)
             theta = utils.linear_combinaison(1.0, theta, -8.0 * a_k, gradient)
 
             k = k + 1
