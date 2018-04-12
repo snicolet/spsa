@@ -9,7 +9,7 @@ Organize a small chess match with a set of parameters, using cutechess-cli:
   LENGTH        Length of the match to be played
   SEED          Random seed for the match to be played
   PARAM_NAME    Name of a parameter that's being optimized
-  PARAM_VALUE   Integer value for parameter PARAM_NAME
+  PARAM_VALUE   Value for parameter PARAM_NAME
 
 This script works between SPSA3 and cutechess-cli, a chess utility to organize
 matches between chess engines. This Python script plays one MATCH between two

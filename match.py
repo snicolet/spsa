@@ -9,7 +9,7 @@ Organize a small match betwwen two engines
   LENGTH        Length of the match to be played
   SEED          Random seed for the match to be played
   PARAM_NAME    Name of a parameter that's being optimized
-  PARAM_VALUE   Integer value for parameter PARAM_NAME
+  PARAM_VALUE   Value for parameter PARAM_NAME
 
 This script organize a match of the given length between a reference
 engine and the engine which parameters we want to optimize. It works

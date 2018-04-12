@@ -8,7 +8,7 @@ Play one game of chess with SPSA3_PARAM(s), using cutechess-cli :
 
   SEED          Random seed for the game to be played
   PARAM_NAME    Name of a parameter that's being optimized
-  PARAM_VALUE   Integer value for parameter PARAM_NAME
+  PARAM_VALUE   Value for parameter PARAM_NAME
 
 SPSA3 is a black-box parameter tuning tool designed and written by S. Nicolet.
 It is an implementation of the SPSA3 algorithm, with a focus on optimizing
