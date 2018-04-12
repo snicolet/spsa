@@ -4,22 +4,22 @@
 """
 Usage: chess-match.py LENGTH SEED [PARAM_NAME PARAM_VALUE]...
 
-Organize a small chess match with SPSA3_PARAM(s), using cutechess-cli:
+Organize a small chess match with a set of parameters, using cutechess-cli:
 
   LENGTH        Length of the match to be played
-  SEED          Running number for the match to be played
+  SEED          Random seed for the match to be played
   PARAM_NAME    Name of a parameter that's being optimized
   PARAM_VALUE   Integer value for parameter PARAM_NAME
-
-SPSA3 is a black-box parameter tuning tool designed and written by S. Nicolet.
-It is an implementation of the SPSA3 algorithm, with a focus on optimizing
-parameters for game playing engines like Go, Chess, etc.
 
 This script works between SPSA3 and cutechess-cli, a chess utility to organize
 matches between chess engines. This Python script plays one MATCH between two
 chess engines. One of the engines receives the list of arguments values given 
 on the command line, and the other one being chosen by the script among a fixed
 pool of oppenent(s) specified in the script.
+
+Note: SPSA3 is used as black-box parameter tuning tool, in an implementation  
+written by S. Nicolet. This is the SPSA algorithm, with a focus on optimizing
+parameters for game playing engines like Go, Chess, etc.
 
 In this script the following variables must be modified to fit the test
 environment and conditions. The default values are just examples.
@@ -56,7 +56,7 @@ engine += 'option.Threads=1 '
 engine += 'name=stockfish '
 
 # Format for the commands that are sent to the engine to
-# set the parameter values. When the command is sent,
+# set the parameter values. When the match is run,
 # {name} will be replaced with the parameter name and {value}
 # with the parameter value.
 engine_param_cmd = 'setoption name {name} value {value}'
@@ -85,7 +85,7 @@ def main(argv = None):
         return 0
 
     if len(argv) < 4 or len(argv) % 2 == 1:
-        print('Too few arguments')
+        print('Too few arguments, or odd number of aguments')
         return 2
 
     rounds = 0
@@ -96,15 +96,15 @@ def main(argv = None):
         return 2
 
     argv = argv[1:]
-    spsa3_seed = 0
+    seed = 0
     try:
-        spsa3_seed = int(argv[0])
+        seed = int(argv[0])
     except exceptions.ValueError:
         print('Invalid seed value: %s' % argv[0])
         return 2
 
     fcp = engine
-    scp = opponents[spsa3_seed % len(opponents)]
+    scp = opponents[seed % len(opponents)]
 
     # Parse the parameters that should be optimized
     for i in range(1, len(argv), 2):
@@ -120,7 +120,7 @@ def main(argv = None):
         fcp += ' initstr="%s" ' % initstr
 
     cutechess_args  = ' -repeat -rounds %s ' % rounds
-    cutechess_args += ' -srand %d -engine %s -engine %s %s ' % (spsa3_seed, fcp, scp, options)
+    cutechess_args += ' -srand %d -engine %s -engine %s %s ' % (seed, fcp, scp, options)
     command  = ' cd ' + directory + ' && '
     command += ' %s %s ' % (cutechess_cli_path, cutechess_args)
     
@@ -152,3 +152,6 @@ def main(argv = None):
 
 if __name__ == "__main__":
     sys.exit(main())
+    
+    
+    

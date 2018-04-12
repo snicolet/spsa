@@ -7,6 +7,7 @@ Author: Stéphane Nicolet
 import random
 import math
 import array
+import utils
 
 
 class SPSA_minimization:
@@ -86,16 +87,16 @@ class SPSA_minimization:
 
             #print(k, " gradient =", gradient)
             # if k % 1000 == 0:
-                # print(k, theta, "norm2(g) =", norm2(gradient))
+                # print(k, theta, "norm2(g) =", utils.norm2(gradient))
                 # print(k, " theta =", theta)
 
             ## For SPSA we update with a small step:   theta = theta - a_k * gradient
             ##
-            ## theta = linear_combinaison(1.0, theta, -a_k, gradient)
+            ## theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
             
-            ## For SAG we update with a larger step:    theta = theta - 16 * a_k * gradient
+            ## For SAG we update with a larger step:    theta = theta - 8 * a_k * gradient
             ##
-            theta = linear_combinaison(1.0, theta, -16.0 * a_k, gradient)
+            theta = utils.linear_combinaison(1.0, theta, -8.0 * a_k, gradient)
 
             k = k + 1
             if k >= self.max_iter:
@@ -147,10 +148,10 @@ class SPSA_minimization:
             # evaluations, to reduce the variance of the gradient if the
             # evaluations use simulations (like in games).
             state = random.getstate()
-            f1 = self.evaluate_goal(linear_combinaison(1.0, theta, c, delta))
+            f1 = self.evaluate_goal(utils.linear_combinaison(1.0, theta, c, delta))
 
             random.setstate(state)
-            f2 = self.evaluate_goal(linear_combinaison(1.0, theta, -c, delta))
+            f2 = self.evaluate_goal(utils.linear_combinaison(1.0, theta, -c, delta))
 
             if f1 != f2:
                 break
@@ -165,7 +166,7 @@ class SPSA_minimization:
             gradient[name] = (f1 - f2) / (2.0 * c * delta[name])
 
         if self.previous_gradient != {}:
-            gradient = linear_combinaison(0.1, gradient, 0.9, self.previous_gradient)
+            gradient = utils.linear_combinaison(0.1, gradient, 0.9, self.previous_gradient)
 
         self.previous_gradient = gradient
 
@@ -182,12 +183,12 @@ class SPSA_minimization:
             delta[name] = 1 if random.randint(0, 1) else -1
 
 
-        g = norm2(self.previous_gradient)
-        d = norm2(delta)
+        g = utils.norm2(self.previous_gradient)
+        d = utils.norm2(delta)
 
         if g > 0.00001:
-            delta = linear_combinaison(0.55        , delta, \
-                                       0.25 * d / g, self.previous_gradient)
+            delta = utils.linear_combinaison(0.55        , delta, \
+                                             0.25 * d / g, self.previous_gradient)
 
         return delta
 
@@ -218,64 +219,6 @@ class SPSA_minimization:
 
         # return the average
         return s / (1.0 * n)
-
-
-### Helper functions
-
-
-def norm2(m):
-    """
-    Return the L2-norm of the point m
-    """
-    s = 0.0
-    for (name, value) in m.items():
-        s += value ** 2
-    return math.sqrt(s)
-
-def norm1(m):
-    """
-    Return the L1-norm of the point m
-    """
-    s = 0.0
-    for (name, value) in m.items():
-        s += abs(value)
-    return s
-
-
-def linear_combinaison(alpha = 1.0, m1 = {},
-                       beta = None, m2 = {}):
-    """
-    Return the linear combinaison m = alpha * m1 + beta * m2.
-    """
-    if m2 == {}:
-        m2 = m1
-        beta = 0.0
-
-    m = {}
-    for (name, value) in m1.items():
-        m[name] = alpha * value + beta * m2.get(name, 0.0)
-
-    return m
-
-
-def difference(m1, m2):
-    """
-    Return the difference m = m1 - m2.
-    """
-    return linear_combinaison(1.0, m1, -1.0, m2)
-
-def sum(m1, m2):
-    """
-    Return the sum m = m1 + m2.
-    """
-    return linear_combinaison(1.0, m1, 1.0, m2)
-
-def regulizer(m, lambd , alpha):
-    """
-    Return a regulizer r = lamdb * ((1 - alpha) * norm1(m) + alpha * norm2(m))
-    Useful to transform non-convex problems into pseudo-convex ones
-    """
-    return lambd * ((1 - alpha) * norm1(m) + alpha * norm2(m))
 
 
 ###### Examples

@@ -1,99 +1,161 @@
 # -*- coding: utf-8 -*-
 """
-Optimizer fot game coeeficients using the SPSA algorithm.
+Optimizer for game coefficients using the SPSA algorithm.
 Author: Stéphane Nicolet
 """
 
+from subprocess import Popen, PIPE
 import random
 import math
 import array
-from subprocess import Popen, PIPE
 import sys
 import spsa
+import utils
 
-def engine_score(theta):
+
+
+
+class game_optimizer:
+
+    def __init__(self):
+        """
+        The constructor of a game_optimizer object.
+        """
+        
+        # Store the arguments
+        self.ENGINE_COMMAND  = ""   # name of the script used to make a match against the reference engine
+        self.THETA_0         = {}   # the initial set of parameter
+        self.MINI_MATCH      = 6    # size of the minimatches used to estimate the gradient
     
-    minibatch = 6                             # size of the mini-matches used to get an evaluation
-    seed      = random.randint(1, 100000000)  # a random seed
     
-    print(seed)
-
-    command = "python chess-match.py "
-    args = " " + str(minibatch) + " " + str(seed) + " "
-    for (name, value) in theta.items():
-        args +=  " " + name + " " + str(value) + " "
-    
-    process = Popen(command + args, shell = True, stdout = PIPE)
-    output = process.communicate()[0]
-    
-    if process.returncode != 0:
-        print('Could not execute command: %s' % (command + args))
-        return -10000
-    
-    return float(output)
-
-
-
-
-
+    def set_engine_command(self, command):
+        """
+        Set the name of the command used to run a minimatch against the
+        reference engine. The command is a shell script which will receive
+        the list of parameters on the standard output, and ruturn the score
+        of the match, with the convention that higher scores will be a good
+        thing for the optimized engine.
+        """
+        
+        # Store the command name
+        self.ENGINE_COMMAND = command
+        
        
-theta0 = {}
+    def launch_engine(self, theta):
+        """
+        Launch the match of the engine with parameters theta
+        """
+        
+        # Each match will be started with a different seed, passed as a command line parameter
+        seed = random.randint(1, 100000000)  # a random seed
+        print("seed = " + str(seed))
 
-def read_parameters(s):
-   global theta0
+        # Create the command line and the list of parameters
+        command = self.ENGINE_COMMAND + " "
+        args = " " + str(self.MINI_MATCH) + " " + str(seed) + " "
+        for (name, value) in theta.items():
+            args +=  " " + name + " " + str(value) + " "
+    
+        # We use a subprocess to launch the match
+        process = Popen(command + args, shell = True, stdout = PIPE)
+        output = process.communicate()[0]
+    
+        if process.returncode != 0:
+            print('ERROR in launch_engine: could not execute command: %s' % (command + args))
+            return -10000
+    
+        # the score of the match
+        return float(output)   
+
+
+    def goal_function(self, **args):
+        """
+        This is the function that the class exports, and that can be plugged 
+        into the generic SPSA minimizer.
+        
+        Mainly we launch the engine match, take the opposite of the score (because
+        we want to *maximize* the score but SPSA is a minimizer). Note that we add 
+        a regulization term, which helps the convexity of the problem.
+        """
+        
+        # Create the parameter vector
+        theta = {}
+        for (name, value) in self.THETA_0.items():
+            v = args[name]
+            theta[name] = v
+
+        # Calculate the regularization term
+        regularization = utils.regulizer(utils.difference(theta, self.THETA_0), 0.0001, 0.5)
+        
+        # Calculate the score of the minimatch
+        score = self.launch_engine(theta)
+    
+        result = -score + regularization
+        
+        print("**args = " + str(args))
+        print("goal   = " + str(-result))
+        
+        return result
+
+
+    def set_parameters_from_string(self, s):
+        """
+        This is the function to transform the list of parameters, given as a string,
+        into a vector for internal usage by the class.
+        
+        Example: "QueenValue 10.0  RookValue 6.0 "
+                 would be transformed into the following python vector:
+                 {'QueenValue': 10.0, 'RookValue': 6.0}
+                 and this will be used as the starting point for the optimizer
+                 
+        """
+        
+        # Parse the string
+        s = ' '.join(s.split())
+        list = s.split(' ')
+        n = len(list)
    
-   s = ' '.join(s.split())
-   
-   print("s = " + s)
-   list = s.split(' ')
-   n = len(list)
-   
-   theta0 = {}
-   
-   for k in range(0 , n // 2):
-      name  = list[ 2*k ]
-      value = float(list[ 2*k + 1])
-      theta0[name] = value
+        # Create the initial vector, and store it in THETA_0
+        self.THETA_0 = {}
+        for k in range(0 , n // 2):
+            name  = list[ 2*k ]
+            value = float(list[ 2*k + 1])
+            self.THETA_0[name] = value
       
-   print("read_parameters :  theta0 = " + str(theta0))
-   
-   return theta0
-   
-
-
-def goal_function(**args):
-
-    global theta0
-    
-    theta = {}
-    for (name, value) in theta0.items():
-       ## print(name)
-       ## print(value)
-       v = args[name]
-       theta[name] = v
-       
-    regularization = spsa.regulizer(spsa.difference(theta, theta0), 0.0001, 0.5)
-    score = engine_score(theta)
-    
-    result = -score + regularization
-    
-    print("**args = " + str(args))
-    print("goal   = " + str(result))
-    
-    return result
+        # The function also prints and returns THETA_0
+        print("read_parameters :  THETA_0 = " + str(self.THETA_0))
+        return self.THETA_0
 
 
 
-###### Examples
+###### Example
 
 if __name__ == "__main__":
 
+    """
+       Usage : python game-optimizer.py [PARAM_NAME PARAM_VALUE]...
+    """
 
-    theta0 = read_parameters("singular_A   20   singular_B  0 ")
+    # create the optimization object
+    optimizer  = game_optimizer()
     
-    optimizer = spsa.SPSA_minimization(goal_function, theta0, 10000)
+    # set the name of the script to run matches
+    optimizer.set_engine_command("python chess-match.py")
     
-    minimum = optimizer.run()
+    # use this to get the initial parameters from a string
+    parameters = "singular_A   20   singular_B  0"
+    
+    # use this to get the initial parameters from the command line
+    # parameters = ' '.join(sys.argv[1:])
+    
+    print("parameters = " + parameters)
+    theta0 = optimizer.set_parameters_from_string(parameters)
+    
+    # create the SPSA minimizer with 10000 iterations...
+    minimizer  = spsa.SPSA_minimization(optimizer.goal_function, theta0, 10000)
+    
+    # run it!
+    minimum = minimizer.run()
     print("minimum = ", minimum)
     
 

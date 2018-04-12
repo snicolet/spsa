@@ -6,7 +6,7 @@ Usage: chess-game.py SEED [PARAM_NAME PARAM_VALUE]...
 
 Play one game of chess with SPSA3_PARAM(s), using cutechess-cli :
 
-  SEED          Running number for the game to be played
+  SEED          Random seed for the game to be played
   PARAM_NAME    Name of a parameter that's being optimized
   PARAM_VALUE   Integer value for parameter PARAM_NAME
 
@@ -88,18 +88,18 @@ def main(argv = None):
         return 0
 
     if len(argv) < 3 or len(argv) % 2 == 0:
-        print('Too few arguments')
+        print('Too few arguments, or even number of arguments')
         return 2
 
-    spsa3_seed = 0
+    seed = 0
     try:
-        spsa3_seed = int(argv[0])
+        seed = int(argv[0])
     except exceptions.ValueError:
         print('Invalid seed value: %s' % argv[0])
         return 2
 
     fcp = engine
-    scp = opponents[(spsa3_seed >> 1) % len(opponents)]
+    scp = opponents[(seed >> 1) % len(opponents)]
 
     # Parse the parameters that should be optimized
     for i in range(1, len(argv), 2):
@@ -115,10 +115,10 @@ def main(argv = None):
         fcp += ' initstr="%s" ' % initstr
 
     # Choose the engine's playing side (color) based on SPSA's seed
-    if spsa3_seed % 2 != 0:
+    if seed % 2 != 0:
         fcp, scp = scp, fcp
 
-    cutechess_args = ' -srand %d -engine %s -engine %s %s ' % (spsa3_seed >> 1, fcp, scp, options)
+    cutechess_args = ' -srand %d -engine %s -engine %s %s ' % (seed >> 1, fcp, scp, options)
     command  = ' cd ' + directory + ' && '
     command += ' %s %s ' % (cutechess_cli_path, cutechess_args)
     
@@ -132,15 +132,15 @@ def main(argv = None):
         print('Could not execute command: %s' % command)
         return 2
 
-    # Convert Cutechess-cli's result into W/L/D
+    # Convert cutechess-cli's result into W/L/D
     # Note that only one game should be played
     result = -1
     for line in output.splitlines():
         if line.startswith('Finished game'):
             if line.find(": 1-0") != -1:
-                result = spsa3_seed % 2
+                result = seed % 2
             elif line.find(": 0-1") != -1:
-                result = (spsa3_seed % 2) ^ 1
+                result = (seed % 2) ^ 1
             elif line.find(": 1/2-1/2") != -1:
                 result = 2
             else:
