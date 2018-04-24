@@ -91,10 +91,10 @@ class SPSA_minimization:
                 # print(k, " theta =", theta)
 
             ## For SPSA we update with a small step (theta = theta - a_k * gradient)
-            ## theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
+            theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
             
             ## For SAG we update with a larger step (theta = theta - 8 * a_k * gradient)
-            theta = utils.linear_combinaison(1.0, theta, -8.0 * a_k, gradient)
+            ##theta = utils.linear_combinaison(1.0, theta, -8.0 * a_k, gradient)
 
             k = k + 1
             if k >= self.max_iter:
@@ -249,15 +249,15 @@ if __name__ == "__main__":
 
     def rastrigin(x, y):
         A = 10
-        return 2 * A + (x*x - A * math.cos(2*math.pi*x)) \
-                     + (y*y - A * math.cos(2*math.pi*y))
-    print(SPSA_minimization(rastrigin, {"x" : 5.0, "y" : 20.0 } , 1000).run())
+        return 2 * A + (x * x - A * math.cos(2 * math.pi * x)) \
+                     + (y * y - A * math.cos(2 * math.pi * y))
+    print(SPSA_minimization(rastrigin, {"x" : 5.0, "y" : 4.0 } , 1000).run())
 
 
 
     def rosenbrock(x, y):
         return 100.0*((y-x*x)**2) + (x-1.0)**2
-    print(SPSA_minimization(rosenbrock, {"x" : 1.0, "y" : 1.0 } , 1000).run())
+    ##print(SPSA_minimization(rosenbrock, {"x" : 1.0, "y" : 1.0 } , 1000).run())
 
 
 
@@ -269,7 +269,7 @@ if __name__ == "__main__":
 
 
 
-    minimum = m.run()
+    ##minimum = m.run()
     print("minimum =", minimum)
     print("goal at minimum =", m.evaluate_goal(minimum))
 
