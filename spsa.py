@@ -95,12 +95,8 @@ class SPSA_minimization:
             ## For SPSA we update with a small step (theta = theta - a_k * gradient)
             ## theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
             
-            ## For SAG we update with a larger step (theta = theta - 8 * a_k * gradient)
-            ## theta = utils.linear_combinaison(1.0, theta, -8.0 * a_k, gradient)
-            
             ## For RPROP, we update with information about the sign of the gradients
-            theta = utils.linear_combinaison(1.0, theta, -a_k, self.rprop(gradient))
-            ##theta = utils.linear_combinaison(1.0, theta, -0.001, self.rprop(gradient))
+            theta = utils.linear_combinaison(1.0, theta, -1.0, self.rprop(theta, gradient))
 
             k = k + 1
             if k >= self.max_iter:
@@ -224,8 +220,8 @@ class SPSA_minimization:
         # return the average
         return s / (1.0 * n)
     
-    
-    def rprop(self, gradient):
+        
+    def rprop(self, theta, gradient):
         if self.rprop_g == {}:
             self.rprop_g = gradient
         
@@ -237,6 +233,7 @@ class SPSA_minimization:
         
         p = utils.hadamard_product(self.rprop_g, gradient)
         
+        print("theta = ", theta)
         print("gradient = ", gradient)
         print("self.rprop_g = ", self.rprop_g)
         print("p = ", p)
@@ -245,16 +242,15 @@ class SPSA_minimization:
         eta = {}
         for (name, value) in p.items():
         
-            if p[name] < 0   : g[name] = 0
-            if p[name] >= 0  : g[name] = gradient[name]
-            
-            if p[name] > 0   : eta[name] = 1.2
-            if p[name] < 0   : eta[name] = 0.5
-            if p[name] == 0  : eta[name] = 0.75
-            
+            if p[name] > 0   : eta[name] = 1.05  ## building speed
+            if p[name] < 0   : eta[name] = 0.4   ## we have passed a local minima: slow down
+            if p[name] == 0  : eta[name] = 1.0
+        
             delta[name] = eta[name] * delta[name]
-            delta[name] = min(5.0,      delta[name])
-            delta[name] = max(0.00001, delta[name])
+            delta[name] = min(5.0, delta[name])
+            delta[name] = max(0.000001, delta[name])
+        
+            g[name] = gradient[name]
         
         print("g = ", g)
         print("eta = ", eta)
