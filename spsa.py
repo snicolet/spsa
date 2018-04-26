@@ -48,10 +48,12 @@ class SPSA_minimization:
         self.options = options
 
         # some attributes to provide an history of evaluations
-        self.previous_gradient = {}
-        self.rprop_g = {}
-        self.rprop_delta = {}
-        self.history = array.array('d', range(1000))
+        self.previous_gradient    = {}
+        self.rprop_previous_g     = {}
+        self.rprop_previous_delta = {}
+        
+        self.history_eval = array.array('d', range(1000))
+        self.history_theta = [theta0 for k in range(1000)]
         self.history_count = 0
 
         # These constants are used throughout the SPSA algorithm
@@ -75,35 +77,46 @@ class SPSA_minimization:
         """
 
         k = 0
-        theta = self.theta0
+        theta     = self.theta0
 
         while True:
 
             if self.constraints is not None:
                theta = self.constraints(theta)
+            
+            print("current theta = " + utils.pretty(theta))
 
             c_k = self.c / ((k + 1) ** self.gamma)
             a_k = self.a / ((k + 1 + self.A) ** self.alpha)
 
             gradient = self.approximate_gradient(theta, c_k)
 
-            #print(k, " gradient =", gradient)
+            #print(str(k) + " gradient = " + utils.pretty(gradient))
             # if k % 1000 == 0:
-                # print(k, theta, "norm2(g) =", utils.norm2(gradient))
-                # print(k, " theta =", theta)
+                # print(k + utils.pretty(theta) + "norm2(g) = " + str(utils.norm2(gradient)))
+                # print(k + " theta = " + utils.pretty(theta))
 
             ## For SPSA we update with a small step (theta = theta - a_k * gradient)
             ## theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
             
+            ## For steepest descent we update via a constant small step in the gradient direction
+            mu = -0.01 / max(1.0, utils.norm2(gradient))
+            theta = utils.linear_combinaison(1.0, theta, mu, gradient)
+            
             ## For RPROP, we update with information about the sign of the gradients
-            theta = utils.linear_combinaison(1.0, theta, -1.0, self.rprop(theta, gradient))
+            theta = utils.linear_combinaison(1.0, theta, -0.01, self.rprop(theta, gradient))
 
             k = k + 1
             if k >= self.max_iter:
                 break
 
             if (k % 100 == 0) or (k <= 1000) :
-                print("iter =", k, " goal =", self.average_evaluations(30))
+                (avg_goal , avg_theta) = self.average_evaluations(30)
+                print("iter = " + str(k))
+                print("mean goal  = " + str(avg_goal))
+                print("mean theta = " + utils.pretty(avg_theta))
+            
+            print("-----------------------------------------------------------------")
 
         return theta
 
@@ -122,7 +135,8 @@ class SPSA_minimization:
 
         # store the value in history
 
-        self.history[self.history_count % 1000] = v
+        self.history_eval [self.history_count % 1000] = v
+        self.history_theta[self.history_count % 1000] = theta
         self.history_count += 1
 
         return v
@@ -209,41 +223,50 @@ class SPSA_minimization:
         if n > 1000               : n = 1000
         if n > self.history_count : n = self.history_count
 
-        s = 0.0
+        sum_eval  = 0.0
+        sum_theta = utils.linear_combinaison(0.0, self.theta0)
         for i in range(n):
 
             j = ((self.history_count - 1) % 1000) - i
-            if j < 0 : j += 1000
+            if j < 0     : j += 1000
+            if j >= 1000 : j -= 1000
 
-            s += self.history[j]
+            sum_eval += self.history_eval[j]
+            sum_theta = utils.sum(sum_theta, self.history_theta[j])
 
         # return the average
-        return s / (1.0 * n)
+        alpha = 1.0 / (1.0 * n)
+        return (alpha * sum_eval , utils.linear_combinaison(alpha, sum_theta))
     
         
     def rprop(self, theta, gradient):
-        if self.rprop_g == {}:
-            self.rprop_g = gradient
+    
+        # get the previous g of the RPROP algorithm
+        if self.rprop_previous_g != {}:
+            previous_g = self.rprop_previous_g
+        else:
+            previous_g = gradient
         
-        if self.rprop_delta == {}:
+        # get the previous delta of the RPROP algorithm
+        if self.rprop_previous_delta != {}:
+            delta = self.rprop_previous_delta
+        else:
             delta = gradient
             delta = utils.copy_and_fill(delta, 0.5)
-        else:
-            delta = self.rprop_delta
+            
         
-        p = utils.hadamard_product(self.rprop_g, gradient)
+        p = utils.hadamard_product(self.rprop_previous_g, gradient)
         
-        print("theta = ", theta)
-        print("gradient = ", gradient)
-        print("self.rprop_g = ", self.rprop_g)
-        print("p = ", p)
+        print("gradient = " + utils.pretty(gradient))
+        print("old_g    = " + utils.pretty(self.rprop_previous_g))
+        print("p        = " + utils.pretty(p))
     
         g = {}
         eta = {}
         for (name, value) in p.items():
         
-            if p[name] > 0   : eta[name] = 1.05  ## building speed
-            if p[name] < 0   : eta[name] = 0.4   ## we have passed a local minima: slow down
+            if p[name] > 0   : eta[name] = 1.1   ## building speed
+            if p[name] < 0   : eta[name] = 0.5   ## we have passed a local minima: slow down
             if p[name] == 0  : eta[name] = 1.0
         
             delta[name] = eta[name] * delta[name]
@@ -251,21 +274,23 @@ class SPSA_minimization:
             delta[name] = max(0.000001, delta[name])
         
             g[name] = gradient[name]
+
+        print("g        = " + utils.pretty(g))
+        print("eta      = " + utils.pretty(eta))
+        print("delta    = " + utils.pretty(delta))
         
-        print("g = ", g)
-        print("eta = ", eta)
-        print("delta = ", delta)
+        # store the current g and delta for the next call of the RPROP algorithm
+        self.rprop_previous_g     = g
+        self.rprop_previous_delta = delta
         
-        self.rprop_g     = g
-        self.rprop_delta = delta
-        
+        # calculate the update for the current RPROP
         s = utils.hadamard_product(delta, utils.sign(g))
-        
-        print("utils.sign(g) = ", utils.sign(g))
-        print("s = ", s)
-        print("-----------------------------------------------------------------")
+
+        print("sign(g)  = " + utils.pretty(utils.sign(g)))
+        print("s        = " + utils.pretty(s))
     
         return s
+
 
 
 ###### Examples

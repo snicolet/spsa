@@ -122,6 +122,17 @@ def copy_and_fill(m, v):
 
     return result
 
-    
+def pretty(m):
+    """
+    Return a string representation of m
+    """
+    s = "{ "
+    for name in sorted(m):
+        s += name + " ="
+        if m[name] >= 0: s += " "
+        s += str("%.4f" % m[name]) + "; "
+    s += "}"
+
+    return s
 
 

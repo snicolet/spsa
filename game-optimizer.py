@@ -29,7 +29,7 @@ class game_optimizer:
         # Store the arguments
         self.ENGINE_COMMAND  = ""   # name of the script used to make a match against the reference engine
         self.THETA_0         = {}   # the initial set of parameter
-        self.MINI_MATCH      = 6    # size of the minimatches used to estimate the gradient
+        self.MINI_MATCH      = 10   # size of the minimatches used to estimate the gradient
     
     
     def set_engine_command(self, command):
@@ -52,7 +52,9 @@ class game_optimizer:
         
         # Each match will be started with a different seed, passed as a command line parameter
         seed = random.randint(1, 100000000)  # a random seed
-        print("seed = " + str(seed))
+        
+        # Debug the seed
+        #print("seed = " + str(seed))
 
         # Create the command line and the list of parameters
         command = self.ENGINE_COMMAND + " "
@@ -89,14 +91,14 @@ class game_optimizer:
             theta[name] = v
 
         # Calculate the regularization term
-        regularization = utils.regulizer(utils.difference(theta, self.THETA_0), 0.0001, 0.5)
+        regularization = utils.regulizer(utils.difference(theta, self.THETA_0), 0.01, 0.5)
         
         # Calculate the score of the minimatch
         score = self.launch_engine(theta)
     
         result = -score + regularization
         
-        print("**args = " + str(args))
+        print("**args = " + utils.pretty(args))
         print("goal   = " + str(-result))
         
         return result
@@ -126,7 +128,7 @@ class game_optimizer:
             self.THETA_0[name] = value
       
         # The function also prints and returns THETA_0
-        print("read_parameters :  THETA_0 = " + str(self.THETA_0))
+        print("read_parameters :  THETA_0 = " + utils.pretty(self.THETA_0))
         return self.THETA_0
 
 
@@ -139,11 +141,11 @@ if __name__ == "__main__":
     optimizer  = game_optimizer()
     
     # Set the name of the script to run matches
-    #optimizer.set_engine_command("python chess-match.py")
-    optimizer.set_engine_command("python match.py")
+    optimizer.set_engine_command("python chess-match.py")
+    #optimizer.set_engine_command("python match.py")
     
     # Use this to get the initial parameters from a string
-    parameters = "singular_A   20   singular_B  0"
+    parameters = "A 1.95  B 2.4  C 0.74  D 1.78  E 5.0  F 1.0  G 2.0"
     
     # Use this to get the initial parameters from the command line
     # parameters = ' '.join(sys.argv[1:])
