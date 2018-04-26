@@ -51,10 +51,14 @@ class SPSA_minimization:
         self.previous_gradient    = {}
         self.rprop_previous_g     = {}
         self.rprop_previous_delta = {}
-        
+
         self.history_eval = array.array('d', range(1000))
         self.history_theta = [theta0 for k in range(1000)]
         self.history_count = 0
+        
+        self.best_eval = array.array('d', range(1000))
+        self.best_theta = [theta0 for k in range(1000)]
+        self.best_count = 0
 
         # These constants are used throughout the SPSA algorithm
 
@@ -83,7 +87,7 @@ class SPSA_minimization:
 
             if self.constraints is not None:
                theta = self.constraints(theta)
-            
+
             print("current theta = " + utils.pretty(theta))
 
             c_k = self.c / ((k + 1) ** self.gamma)
@@ -98,11 +102,11 @@ class SPSA_minimization:
 
             ## For SPSA we update with a small step (theta = theta - a_k * gradient)
             ## theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
-            
+
             ## For steepest descent we update via a constant small step in the gradient direction
             mu = -0.01 / max(1.0, utils.norm2(gradient))
             theta = utils.linear_combinaison(1.0, theta, mu, gradient)
-            
+
             ## For RPROP, we update with information about the sign of the gradients
             theta = utils.linear_combinaison(1.0, theta, -0.01, self.rprop(theta, gradient))
 
@@ -113,9 +117,13 @@ class SPSA_minimization:
             if (k % 100 == 0) or (k <= 1000) :
                 (avg_goal , avg_theta) = self.average_evaluations(30)
                 print("iter = " + str(k))
-                print("mean goal  = " + str(avg_goal))
-                print("mean theta = " + utils.pretty(avg_theta))
-            
+                print("mean goal (all)   = " + str(avg_goal))
+                print("mean theta (all)  = " + utils.pretty(avg_theta))
+                
+                (avg_goal , avg_theta) = self.average_best_evals(30)
+                print("mean goal (best)  = " + str(avg_goal))
+                print("mean theta (best) = " + utils.pretty(avg_theta))
+
             print("-----------------------------------------------------------------")
 
         return theta
@@ -150,6 +158,11 @@ class SPSA_minimization:
         converges almost surely to the true gradient of f at theta.
         """
 
+        if self.history_count > 0:
+            current_goal, _ = self.average_evaluations(30)
+        else:
+            current_goal = 100000000000000000.0
+
         bernouilli = self.create_bernouilli(theta)
 
         count = 0
@@ -158,14 +171,16 @@ class SPSA_minimization:
             # M - c * bernouilli to estimate the gradient. We do not want to
             # use a null gradient, so we loop until the two functions evaluations
             # are different. Another trick is that we use the same seed for the
-            # random generator for the two function evaluations, to reduce the 
+            # random generator for the two function evaluations, to reduce the
             # variance of the gradient if the evaluations use simulations (like
             # in games).
             state = random.getstate()
-            f1 = self.evaluate_goal(utils.linear_combinaison(1.0, theta, c, bernouilli))
+            theta1 = utils.linear_combinaison(1.0, theta, c, bernouilli)
+            f1 = self.evaluate_goal(theta1)
 
             random.setstate(state)
-            f2 = self.evaluate_goal(utils.linear_combinaison(1.0, theta, -c, bernouilli))
+            theta2 = utils.linear_combinaison(1.0, theta, -c, bernouilli)
+            f2 = self.evaluate_goal(theta2)
 
             if f1 != f2:
                 break
@@ -175,15 +190,33 @@ class SPSA_minimization:
                 # print("too many evaluation to find a gradient, function seems flat")
                 break
 
+        # Update the gradient
         gradient = {}
         for (name, value) in theta.items():
             gradient[name] = (f1 - f2) / (2.0 * c * bernouilli[name])
+
+        if (f1 > current_goal) and (f2 > current_goal):
+            print("function seems not decreasing")
+            gradient = utils.linear_combinaison(0.1, gradient)
 
         if self.previous_gradient != {}:
             gradient = utils.linear_combinaison(0.1, gradient, 0.9, self.previous_gradient)
 
         self.previous_gradient = gradient
-
+        
+        
+        # Store the best the two evals f1 and f2 (or both)
+        if (f1 <= current_goal):
+            self.best_eval [self.best_count % 1000] = f1
+            self.best_theta[self.best_count % 1000] = theta1
+            self.best_count += 1
+        
+        if (f2 <= current_goal):
+            self.best_eval [self.best_count % 1000] = f2
+            self.best_theta[self.best_count % 1000] = theta2
+            self.best_count += 1
+        
+        # Return the estimation of the new gradient
         return gradient
 
 
@@ -238,57 +271,90 @@ class SPSA_minimization:
         alpha = 1.0 / (1.0 * n)
         return (alpha * sum_eval , utils.linear_combinaison(alpha, sum_theta))
     
-        
+
+    def average_best_evals(self, n):
+        """
+        Return the average of the n last best evaluations of the goal function.
+
+        This is a fast function which uses the last evaluations already
+        done by the SPSA algorithm to return an approximation of the current
+        goal value (note that we do not call the goal function another time,
+        so the returned value is an upper bound of the true value).
+        """
+
+        assert(self.best_count > 0) , "not enough evaluations in average_evaluations!"
+
+        if n <= 0              : n = 1
+        if n > 1000            : n = 1000
+        if n > self.best_count : n = self.best_count
+
+        sum_eval  = 0.0
+        sum_theta = utils.linear_combinaison(0.0, self.theta0)
+        for i in range(n):
+
+            j = ((self.best_count - 1) % 1000) - i
+            if j < 0     : j += 1000
+            if j >= 1000 : j -= 1000
+
+            sum_eval += self.best_eval[j]
+            sum_theta = utils.sum(sum_theta, self.best_theta[j])
+
+        # return the average
+        alpha = 1.0 / (1.0 * n)
+        return (alpha * sum_eval , utils.linear_combinaison(alpha, sum_theta))
+
+
+
     def rprop(self, theta, gradient):
-    
+
         # get the previous g of the RPROP algorithm
         if self.rprop_previous_g != {}:
             previous_g = self.rprop_previous_g
         else:
             previous_g = gradient
-        
+
         # get the previous delta of the RPROP algorithm
         if self.rprop_previous_delta != {}:
             delta = self.rprop_previous_delta
         else:
             delta = gradient
             delta = utils.copy_and_fill(delta, 0.5)
-            
-        
-        p = utils.hadamard_product(self.rprop_previous_g, gradient)
-        
+
+
+        p = utils.hadamard_product(previous_g, gradient)
+
         print("gradient = " + utils.pretty(gradient))
-        print("old_g    = " + utils.pretty(self.rprop_previous_g))
+        print("old_g    = " + utils.pretty(previous_g))
         print("p        = " + utils.pretty(p))
-    
+
         g = {}
         eta = {}
         for (name, value) in p.items():
-        
+
             if p[name] > 0   : eta[name] = 1.1   ## building speed
             if p[name] < 0   : eta[name] = 0.5   ## we have passed a local minima: slow down
             if p[name] == 0  : eta[name] = 1.0
-        
+
             delta[name] = eta[name] * delta[name]
             delta[name] = min(5.0, delta[name])
             delta[name] = max(0.000001, delta[name])
-        
+
             g[name] = gradient[name]
 
         print("g        = " + utils.pretty(g))
         print("eta      = " + utils.pretty(eta))
         print("delta    = " + utils.pretty(delta))
-        
+
         # store the current g and delta for the next call of the RPROP algorithm
         self.rprop_previous_g     = g
         self.rprop_previous_delta = delta
-        
+
         # calculate the update for the current RPROP
         s = utils.hadamard_product(delta, utils.sign(g))
 
         print("sign(g)  = " + utils.pretty(utils.sign(g)))
         print("s        = " + utils.pretty(s))
-    
+
         return s
 
 

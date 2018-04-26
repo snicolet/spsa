@@ -67,7 +67,7 @@ def sum(m1, m2):
 
 def hadamard_product(m1, m2):
     """
-    Return a vector where each entry is the product of the corresponding 
+    Return a vector where each entry is the product of the corresponding
     entries in m1 and m2
     """
     m = {}
