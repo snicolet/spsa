@@ -63,7 +63,7 @@ class SPSA_minimization:
         # These constants are used throughout the SPSA algorithm
 
         self.a = options.get("a", 1.1)
-        self.c = options.get("c", 0.5)
+        self.c = options.get("c", 0.1)
 
         self.alpha = options.get("alpha", 0.70) # theoretical alpha=0.601, must be <= 1
         self.gamma = options.get("gamma", 0.12) # theoretical gamma=0.101, must be <= 1/6
@@ -240,6 +240,12 @@ class SPSA_minimization:
         if g > 0.00001:
             bernouilli = utils.linear_combinaison(0.55        , bernouilli, \
                                                   0.25 * d / g, self.previous_gradient)
+        
+        for (name, value) in m.items():
+            if bernouilli[name] == 0.0:
+                bernouilli[name] = 0.2
+            if abs(bernouilli[name]) < 0.2:
+                bernouilli[name] = 0.2 * utils.sign_of(bernouilli[name])
 
         return bernouilli
 
