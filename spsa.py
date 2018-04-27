@@ -88,7 +88,7 @@ class SPSA_minimization:
             if self.constraints is not None:
                theta = self.constraints(theta)
 
-            print("current theta = " + utils.pretty(theta))
+            print("theta  = " + utils.pretty(theta))
 
             c_k = self.c / ((k + 1) ** self.gamma)
             a_k = self.a / ((k + 1 + self.A) ** self.alpha)
