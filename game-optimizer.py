@@ -29,7 +29,7 @@ class game_optimizer:
         # Store the arguments
         self.ENGINE_COMMAND  = ""   # name of the script used to make a match against the reference engine
         self.THETA_0         = {}   # the initial set of parameter
-        self.MINI_MATCH      = 10   # size of the minimatches used to estimate the gradient
+        self.MINI_MATCH      = 12   # size of the minimatches used to estimate the gradient
 
 
     def set_engine_command(self, command):

@@ -112,7 +112,7 @@ class SPSA_minimization:
             
             ## We then move to the point which gives the best average of goal
             (avg_goal , avg_theta) = self.average_best_evals(30)
-            theta = utils.linear_combinaison(0.99, theta, 0.01, avg_theta)
+            theta = utils.linear_combinaison(0.8, theta, 0.2, avg_theta)
 
             k = k + 1
             if k >= self.max_iter:
@@ -203,8 +203,7 @@ class SPSA_minimization:
             print("function seems not decreasing")
             gradient = utils.linear_combinaison(0.1, gradient)
 
-        if self.previous_gradient != {}:
-            gradient = utils.linear_combinaison(0.1, gradient, 0.9, self.previous_gradient)
+        gradient = utils.linear_combinaison(0.1, gradient, 0.9, self.previous_gradient)
 
         self.previous_gradient = gradient
         
@@ -346,7 +345,7 @@ class SPSA_minimization:
             if p[name] == 0  : eta[name] = 1.0
 
             delta[name] = eta[name] * delta[name]
-            delta[name] = min(5.0, delta[name])
+            delta[name] = min(50.0, delta[name])
             delta[name] = max(0.000001, delta[name])
 
             g[name] = gradient[name]
