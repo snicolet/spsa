@@ -13,7 +13,6 @@ import array
 
 ### Helper functions
 
-
 def norm2(m):
     """
     Return the L2-norm of the point m
@@ -22,7 +21,6 @@ def norm2(m):
     for (name, value) in m.items():
         s += value ** 2
     return math.sqrt(s)
-
 
 
 def norm1(m):

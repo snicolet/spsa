@@ -109,6 +109,10 @@ class SPSA_minimization:
 
             ## For RPROP, we update with information about the sign of the gradients
             theta = utils.linear_combinaison(1.0, theta, -0.01, self.rprop(theta, gradient))
+            
+            ## We then move to the point which gives the best average of goal
+            (avg_goal , avg_theta) = self.average_best_evals(30)
+            theta = utils.linear_combinaison(0.99, theta, 0.01, avg_theta)
 
             k = k + 1
             if k >= self.max_iter:
