@@ -7,6 +7,7 @@ Author: Stéphane Nicolet
 import random
 import math
 import array
+import utils
 
 
 class SPSA_minimization:
@@ -47,13 +48,21 @@ class SPSA_minimization:
         self.options = options
 
         # some attributes to provide an history of evaluations
-        self.previous_gradient = {}
-        self.history = array.array('d', range(1000))
+        self.previous_gradient    = {}
+        self.rprop_previous_g     = {}
+        self.rprop_previous_delta = {}
+
+        self.history_eval = array.array('d', range(1000))
+        self.history_theta = [theta0 for k in range(1000)]
         self.history_count = 0
+        
+        self.best_eval = array.array('d', range(1000))
+        self.best_theta = [theta0 for k in range(1000)]
+        self.best_count = 0
 
         # These constants are used throughout the SPSA algorithm
 
-        self.a = options.get("a", 0.5)
+        self.a = options.get("a", 1.1)
         self.c = options.get("c", 0.1)
 
         self.alpha = options.get("alpha", 0.70) # theoretical alpha=0.601, must be <= 1
@@ -72,37 +81,54 @@ class SPSA_minimization:
         """
 
         k = 0
-        theta = self.theta0
+        theta     = self.theta0
 
         while True:
 
             if self.constraints is not None:
                theta = self.constraints(theta)
 
+            print("theta  = " + utils.pretty(theta))
+
             c_k = self.c / ((k + 1) ** self.gamma)
             a_k = self.a / ((k + 1 + self.A) ** self.alpha)
 
             gradient = self.approximate_gradient(theta, c_k)
 
-            #print(k, " gradient =", gradient)
+            #print(str(k) + " gradient = " + utils.pretty(gradient))
             # if k % 1000 == 0:
-                # print(k, theta, "norm2(g) =", norm2(gradient))
-                # print(k, " theta =", theta)
+                # print(k + utils.pretty(theta) + "norm2(g) = " + str(utils.norm2(gradient)))
+                # print(k + " theta = " + utils.pretty(theta))
 
-            ## For SPSA we update with a small step:   theta = theta - a_k * gradient
-            ##
-            ## theta = linear_combinaison(1.0, theta, -a_k, gradient)
+            ## For SPSA we update with a small step (theta = theta - a_k * gradient)
+            ## theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
+
+            ## For steepest descent we update via a constant small step in the gradient direction
+            mu = -0.01 / max(1.0, utils.norm2(gradient))
+            theta = utils.linear_combinaison(1.0, theta, mu, gradient)
+
+            ## For RPROP, we update with information about the sign of the gradients
+            theta = utils.linear_combinaison(1.0, theta, -0.01, self.rprop(theta, gradient))
             
-            ## For SAG we update with a larger step:    theta = theta - 16 * a_k * gradient
-            ##
-            theta = linear_combinaison(1.0, theta, -16.0 * a_k, gradient)
+            ## We then move to the point which gives the best average of goal
+            (avg_goal , avg_theta) = self.average_best_evals(30)
+            theta = utils.linear_combinaison(0.8, theta, 0.2, avg_theta)
 
             k = k + 1
             if k >= self.max_iter:
                 break
 
             if (k % 100 == 0) or (k <= 1000) :
-                print("iter =", k, " goal =", self.average_evaluations(30))
+                (avg_goal , avg_theta) = self.average_evaluations(30)
+                print("iter = " + str(k))
+                print("mean goal (all)   = " + str(avg_goal))
+                print("mean theta (all)  = " + utils.pretty(avg_theta))
+                
+                (avg_goal , avg_theta) = self.average_best_evals(30)
+                print("mean goal (best)  = " + str(avg_goal))
+                print("mean theta (best) = " + utils.pretty(avg_theta))
+
+            print("-----------------------------------------------------------------")
 
         return theta
 
@@ -121,7 +147,8 @@ class SPSA_minimization:
 
         # store the value in history
 
-        self.history[self.history_count % 1000] = v
+        self.history_eval [self.history_count % 1000] = v
+        self.history_theta[self.history_count % 1000] = theta
         self.history_count += 1
 
         return v
@@ -135,22 +162,29 @@ class SPSA_minimization:
         converges almost surely to the true gradient of f at theta.
         """
 
-        delta = self.create_delta(theta)
+        if self.history_count > 0:
+            current_goal, _ = self.average_evaluations(30)
+        else:
+            current_goal = 100000000000000000.0
+
+        bernouilli = self.create_bernouilli(theta)
 
         count = 0
         while True:
-            # Calculate two evaluations of f at points M + c * delta and
-            # M - c * delta to estimate the gradient. We do not want to
-            # use a null gradient, so we loop until the two functions
-            # evaluations are different. Another trick is that we use
-            # the same seed for the random generator for the two function
-            # evaluations, to reduce the variance of the gradient if the
-            # evaluations use simulations (like in games).
+            # Calculate two evaluations of f at points M + c * bernouilli and
+            # M - c * bernouilli to estimate the gradient. We do not want to
+            # use a null gradient, so we loop until the two functions evaluations
+            # are different. Another trick is that we use the same seed for the
+            # random generator for the two function evaluations, to reduce the
+            # variance of the gradient if the evaluations use simulations (like
+            # in games).
             state = random.getstate()
-            f1 = self.evaluate_goal(linear_combinaison(1.0, theta, c, delta))
+            theta1 = utils.linear_combinaison(1.0, theta, c, bernouilli)
+            f1 = self.evaluate_goal(theta1)
 
             random.setstate(state)
-            f2 = self.evaluate_goal(linear_combinaison(1.0, theta, -c, delta))
+            theta2 = utils.linear_combinaison(1.0, theta, -c, bernouilli)
+            f2 = self.evaluate_goal(theta2)
 
             if f1 != f2:
                 break
@@ -160,36 +194,59 @@ class SPSA_minimization:
                 # print("too many evaluation to find a gradient, function seems flat")
                 break
 
+        # Update the gradient
         gradient = {}
         for (name, value) in theta.items():
-            gradient[name] = (f1 - f2) / (2.0 * c * delta[name])
+            gradient[name] = (f1 - f2) / (2.0 * c * bernouilli[name])
 
-        if self.previous_gradient != {}:
-            gradient = linear_combinaison(0.1, gradient, 0.9, self.previous_gradient)
+        if (f1 > current_goal) and (f2 > current_goal):
+            print("function seems not decreasing")
+            gradient = utils.linear_combinaison(0.1, gradient)
+
+        gradient = utils.linear_combinaison(0.1, gradient, 0.9, self.previous_gradient)
 
         self.previous_gradient = gradient
-
+        
+        
+        # Store the best the two evals f1 and f2 (or both)
+        if (f1 <= current_goal):
+            self.best_eval [self.best_count % 1000] = f1
+            self.best_theta[self.best_count % 1000] = theta1
+            self.best_count += 1
+        
+        if (f2 <= current_goal):
+            self.best_eval [self.best_count % 1000] = f2
+            self.best_theta[self.best_count % 1000] = theta2
+            self.best_count += 1
+        
+        # Return the estimation of the new gradient
         return gradient
 
 
-    def create_delta(self, m):
+    def create_bernouilli(self, m):
         """
         Create a random direction to estimate the stochastic gradient.
-        We use a Bernouilli distribution : delta = (+1,+1,-1,+1,-1,.....)
+        We use a Bernouilli distribution : bernouilli = (+1,+1,-1,+1,-1,.....)
         """
-        delta = {}
+        bernouilli = {}
         for (name, value) in m.items():
-            delta[name] = 1 if random.randint(0, 1) else -1
+            bernouilli[name] = 1 if random.randint(0, 1) else -1
 
 
-        g = norm2(self.previous_gradient)
-        d = norm2(delta)
+        g = utils.norm2(self.previous_gradient)
+        d = utils.norm2(bernouilli)
 
         if g > 0.00001:
-            delta = linear_combinaison(0.55        , delta, \
-                                       0.25 * d / g, self.previous_gradient)
+            bernouilli = utils.linear_combinaison(0.55        , bernouilli, \
+                                                  0.25 * d / g, self.previous_gradient)
+        
+        for (name, value) in m.items():
+            if bernouilli[name] == 0.0:
+                bernouilli[name] = 0.2
+            if abs(bernouilli[name]) < 0.2:
+                bernouilli[name] = 0.2 * utils.sign_of(bernouilli[name])
 
-        return delta
+        return bernouilli
 
 
     def average_evaluations(self, n):
@@ -208,74 +265,107 @@ class SPSA_minimization:
         if n > 1000               : n = 1000
         if n > self.history_count : n = self.history_count
 
-        s = 0.0
+        sum_eval  = 0.0
+        sum_theta = utils.linear_combinaison(0.0, self.theta0)
         for i in range(n):
 
             j = ((self.history_count - 1) % 1000) - i
-            if j < 0 : j += 1000
+            if j < 0     : j += 1000
+            if j >= 1000 : j -= 1000
 
-            s += self.history[j]
+            sum_eval += self.history_eval[j]
+            sum_theta = utils.sum(sum_theta, self.history_theta[j])
 
         # return the average
-        return s / (1.0 * n)
+        alpha = 1.0 / (1.0 * n)
+        return (alpha * sum_eval , utils.linear_combinaison(alpha, sum_theta))
+    
+
+    def average_best_evals(self, n):
+        """
+        Return the average of the n last best evaluations of the goal function.
+
+        This is a fast function which uses the last evaluations already
+        done by the SPSA algorithm to return an approximation of the current
+        goal value (note that we do not call the goal function another time,
+        so the returned value is an upper bound of the true value).
+        """
+
+        assert(self.best_count > 0) , "not enough evaluations in average_evaluations!"
+
+        if n <= 0              : n = 1
+        if n > 1000            : n = 1000
+        if n > self.best_count : n = self.best_count
+
+        sum_eval  = 0.0
+        sum_theta = utils.linear_combinaison(0.0, self.theta0)
+        for i in range(n):
+
+            j = ((self.best_count - 1) % 1000) - i
+            if j < 0     : j += 1000
+            if j >= 1000 : j -= 1000
+
+            sum_eval += self.best_eval[j]
+            sum_theta = utils.sum(sum_theta, self.best_theta[j])
+
+        # return the average
+        alpha = 1.0 / (1.0 * n)
+        return (alpha * sum_eval , utils.linear_combinaison(alpha, sum_theta))
 
 
-### Helper functions
+
+    def rprop(self, theta, gradient):
+
+        # get the previous g of the RPROP algorithm
+        if self.rprop_previous_g != {}:
+            previous_g = self.rprop_previous_g
+        else:
+            previous_g = gradient
+
+        # get the previous delta of the RPROP algorithm
+        if self.rprop_previous_delta != {}:
+            delta = self.rprop_previous_delta
+        else:
+            delta = gradient
+            delta = utils.copy_and_fill(delta, 0.5)
 
 
-def norm2(m):
-    """
-    Return the L2-norm of the point m
-    """
-    s = 0.0
-    for (name, value) in m.items():
-        s += value ** 2
-    return math.sqrt(s)
+        p = utils.hadamard_product(previous_g, gradient)
 
-def norm1(m):
-    """
-    Return the L1-norm of the point m
-    """
-    s = 0.0
-    for (name, value) in m.items():
-        s += abs(value)
-    return s
+        print("gradient = " + utils.pretty(gradient))
+        print("old_g    = " + utils.pretty(previous_g))
+        print("p        = " + utils.pretty(p))
 
+        g = {}
+        eta = {}
+        for (name, value) in p.items():
 
-def linear_combinaison(alpha = 1.0, m1 = {},
-                       beta = None, m2 = {}):
-    """
-    Return the linear combinaison m = alpha * m1 + beta * m2.
-    """
-    if m2 == {}:
-        m2 = m1
-        beta = 0.0
+            if p[name] > 0   : eta[name] = 1.1   ## building speed
+            if p[name] < 0   : eta[name] = 0.5   ## we have passed a local minima: slow down
+            if p[name] == 0  : eta[name] = 1.0
 
-    m = {}
-    for (name, value) in m1.items():
-        m[name] = alpha * value + beta * m2.get(name, 0.0)
+            delta[name] = eta[name] * delta[name]
+            delta[name] = min(50.0, delta[name])
+            delta[name] = max(0.000001, delta[name])
 
-    return m
+            g[name] = gradient[name]
 
+        print("g        = " + utils.pretty(g))
+        print("eta      = " + utils.pretty(eta))
+        print("delta    = " + utils.pretty(delta))
 
-def difference(m1, m2):
-    """
-    Return the difference m = m1 - m2.
-    """
-    return linear_combinaison(1.0, m1, -1.0, m2)
+        # store the current g and delta for the next call of the RPROP algorithm
+        self.rprop_previous_g     = g
+        self.rprop_previous_delta = delta
 
-def sum(m1, m2):
-    """
-    Return the sum m = m1 + m2.
-    """
-    return linear_combinaison(1.0, m1, 1.0, m2)
+        # calculate the update for the current RPROP
+        s = utils.hadamard_product(delta, utils.sign(g))
 
-def regulizer(m, lambd , alpha):
-    """
-    Return a regulizer r = lamdb * ((1 - alpha) * norm1(m) + alpha * norm2(m))
-    Useful to transform non-convex problems into pseudo-convex ones
-    """
-    return lambd * ((1 - alpha) * norm1(m) + alpha * norm2(m))
+        print("sign(g)  = " + utils.pretty(utils.sign(g)))
+        print("s        = " + utils.pretty(s))
+
+        return s
+
 
 
 ###### Examples
@@ -289,13 +379,13 @@ if __name__ == "__main__":
 
     def f(x, y):
         return x * 100.0 + y * 3.0
-    print(SPSA_minimization(f, {"x" : 3.0, "y" : 2.0 } , 10000).run())
+    #print(SPSA_minimization(f, {"x" : 3.0, "y" : 2.0 } , 10000).run())
 
 
 
     def quadratic(x):
         return x * x + 4 * x + 3
-    print(SPSA_minimization(quadratic, {"x" : 10.0} , 1000).run())
+    #print(SPSA_minimization(quadratic, {"x" : 10.0} , 1000).run())
 
 
 
@@ -308,15 +398,15 @@ if __name__ == "__main__":
 
     def rastrigin(x, y):
         A = 10
-        return 2 * A + (x*x - A * math.cos(2*math.pi*x)) \
-                     + (y*y - A * math.cos(2*math.pi*y))
-    print(SPSA_minimization(rastrigin, {"x" : 5.0, "y" : 20.0 } , 1000).run())
+        return 2 * A + (x * x - A * math.cos(2 * math.pi * x)) \
+                     + (y * y - A * math.cos(2 * math.pi * y))
+    #print(SPSA_minimization(rastrigin, {"x" : 5.0, "y" : 4.0 } , 1000).run())
 
 
 
     def rosenbrock(x, y):
         return 100.0*((y-x*x)**2) + (x-1.0)**2
-    print(SPSA_minimization(rosenbrock, {"x" : 1.0, "y" : 1.0 } , 1000).run())
+    ##print(SPSA_minimization(rosenbrock, {"x" : 1.0, "y" : 1.0 } , 1000).run())
 
 
 
@@ -324,13 +414,13 @@ if __name__ == "__main__":
     def himmelblau(x, y):
         return (x*x + y - 11)**2 + (x + y*y - 7)**2
     theta0 = {"x" : 0.0, "y" : 0.0 }
-    m = SPSA_minimization(himmelblau, theta0, 10000)
+    #m = SPSA_minimization(himmelblau, theta0, 10000)
 
 
 
-    minimum = m.run()
-    print("minimum =", minimum)
-    print("goal at minimum =", m.evaluate_goal(minimum))
+    ##minimum = m.run()
+    #print("minimum =", minimum)
+    #print("goal at minimum =", m.evaluate_goal(minimum))
 
 
 
