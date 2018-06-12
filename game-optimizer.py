@@ -148,7 +148,7 @@ if __name__ == "__main__":
     #optimizer.set_engine_command("python match.py")
 
     # Use this to get the initial parameters from a string
-    parameters = "A 3.2  B 12.8"
+    parameters = "A 0.32  B 1.28"
 
     # Use this to get the initial parameters from the command line
     # parameters = ' '.join(sys.argv[1:])
