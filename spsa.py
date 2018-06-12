@@ -43,6 +43,7 @@ class SPSA_minimization:
         # Store the arguments
         self.f = f
         self.theta0 = theta0
+        self.iter = 0;
         self.max_iter = max_iter
         self.constraints = constraints
         self.options = options
@@ -81,17 +82,20 @@ class SPSA_minimization:
         """
 
         k = 0
-        theta     = self.theta0
+        theta = self.theta0
 
         while True:
+            k = k + 1
+            
+            self.iter = k
 
             if self.constraints is not None:
                theta = self.constraints(theta)
 
             print("theta  = " + utils.pretty(theta))
 
-            c_k = self.c / ((k + 1) ** self.gamma)
-            a_k = self.a / ((k + 1 + self.A) ** self.alpha)
+            c_k = self.c / (k ** self.gamma)
+            a_k = self.a / ((k + self.A) ** self.alpha)
 
             gradient = self.approximate_gradient(theta, c_k)
 
@@ -109,26 +113,25 @@ class SPSA_minimization:
 
             ## For RPROP, we update with information about the sign of the gradients
             theta = utils.linear_combinaison(1.0, theta, -0.01, self.rprop(theta, gradient))
-            
-            ## We then move to the point which gives the best average of goal
-            (avg_goal , avg_theta) = self.average_best_evals(30)
-            theta = utils.linear_combinaison(0.8, theta, 0.2, avg_theta)
 
-            k = k + 1
-            if k >= self.max_iter:
-                break
+            ## We then move to the point which gives the best average of goal
+            # (avg_goal , avg_theta) = self.average_best_evals(30)
+            # theta = utils.linear_combinaison(0.8, theta, 0.2, avg_theta)
 
             if (k % 100 == 0) or (k <= 1000) :
                 (avg_goal , avg_theta) = self.average_evaluations(30)
                 print("iter = " + str(k))
                 print("mean goal (all)   = " + str(avg_goal))
                 print("mean theta (all)  = " + utils.pretty(avg_theta))
-                
+
                 (avg_goal , avg_theta) = self.average_best_evals(30)
                 print("mean goal (best)  = " + str(avg_goal))
                 print("mean theta (best) = " + utils.pretty(avg_theta))
 
             print("-----------------------------------------------------------------")
+
+            if k >= self.max_iter:
+                break
 
         return theta
 
@@ -203,8 +206,16 @@ class SPSA_minimization:
             print("function seems not decreasing")
             gradient = utils.linear_combinaison(0.1, gradient)
 
-        gradient = utils.linear_combinaison(0.1, gradient, 0.9, self.previous_gradient)
+        # For the correction factor used in the running average for the gradient,
+        # see the paper "Adam: A Method For Stochastic Optimization, Kingma and Lei Ba"
 
+        beta = 0.9
+        correction = 1.0 / 1.0 - pow(beta, self.iter)
+
+        gradient = utils.linear_combinaison((1 - beta), gradient, beta, self.previous_gradient)
+        gradient = utils.linear_combinaison(correction, gradient)
+
+        # Store the current gradient for the next time, to calculate the running average
         self.previous_gradient = gradient
         
         

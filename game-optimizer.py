@@ -29,7 +29,7 @@ class game_optimizer:
         # Store the arguments
         self.ENGINE_COMMAND  = ""   # name of the script used to make a match against the reference engine
         self.THETA_0         = {}   # the initial set of parameter
-        self.MINI_MATCH      = 12   # size of the minimatches used to estimate the gradient
+        self.MINI_MATCH      = 6    # size of the minimatches used to estimate the gradient
 
 
     def set_engine_command(self, command):
@@ -54,13 +54,16 @@ class game_optimizer:
         seed = random.randint(1, 100000000)  # a random seed
 
         # Debug the seed
-        #print("seed = " + str(seed))
+        # print("seed = " + str(seed))
 
         # Create the command line and the list of parameters
         command = self.ENGINE_COMMAND + " "
         args = " " + str(self.MINI_MATCH) + " " + str(seed) + " "
         for (name, value) in theta.items():
             args +=  " " + name + " " + str(value) + " "
+
+        # Debug the command
+        # print("command + args = " + command + args)
 
         # We use a subprocess to launch the match
         process = Popen(command + args, shell = True, stdout = PIPE)
@@ -145,7 +148,7 @@ if __name__ == "__main__":
     #optimizer.set_engine_command("python match.py")
 
     # Use this to get the initial parameters from a string
-    parameters = "A 1.95  B 2.4  C 0.74  D 1.78  E 5.0  F 1.0  G 2.0"
+    parameters = "A 3.2  B 12.8"
 
     # Use this to get the initial parameters from the command line
     # parameters = ' '.join(sys.argv[1:])
