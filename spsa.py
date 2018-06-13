@@ -108,15 +108,15 @@ class SPSA_minimization:
             ## theta = utils.linear_combinaison(1.0, theta, -a_k, gradient)
 
             ## For steepest descent we update via a constant small step in the gradient direction
-            mu = -0.05 / max(1.0, utils.norm2(gradient))
+            mu = -0.01 / max(1.0, utils.norm2(gradient))
             theta = utils.linear_combinaison(1.0, theta, mu, gradient)
 
             ## For RPROP, we update with information about the sign of the gradients
-            theta = utils.linear_combinaison(1.0, theta, -0.05, self.rprop(theta, gradient))
+            theta = utils.linear_combinaison(1.0, theta, -0.01, self.rprop(theta, gradient))
 
             ## We then move to the point which gives the best average of goal
-            # (avg_goal , avg_theta) = self.average_best_evals(30)
-            # theta = utils.linear_combinaison(0.8, theta, 0.2, avg_theta)
+            (avg_goal , avg_theta) = self.average_best_evals(30)
+            theta = utils.linear_combinaison(0.98, theta, 0.02, avg_theta)
 
             if (k % 100 == 0) or (k <= 1000) :
                 (avg_goal , avg_theta) = self.average_evaluations(30)
